@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Charter Forge — AI Project Charter Generator</title>
+<meta name="description" content="Turn a plain-text project idea into a polished, downloadable Excel project charter using Gemini." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="css/styles.css" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%231C2440'/%3E%3Cpath d='M9 8h10l4 4v12H9z' fill='%23F6F2EA'/%3E%3Cpath d='M19 8l4 4h-4z' fill='%232F5597'/%3E%3Crect x='12' y='15' width='8' height='2' rx='1' fill='%232F5597'/%3E%3Crect x='12' y='19' width='6' height='2' rx='1' fill='%232F5597'/%3E%3C/svg%3E" />
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <a class="brand" href="#" id="brand-home" aria-label="Charter Forge home">
+      <svg class="brand-mark" viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
+        <rect width="32" height="32" rx="4" fill="#1C2440"/>
+        <path d="M9 8h10l4 4v12H9z" fill="#F6F2EA"/>
+        <path d="M19 8l4 4h-4z" fill="#2F5597"/>
+        <rect x="12" y="15" width="8" height="2" rx="1" fill="#2F5597"/>
+        <rect x="12" y="19" width="6" height="2" rx="1" fill="#2F5597"/>
+      </svg>
+      <span class="brand-text">
+        <span class="brand-name">Charter Forge</span>
+        <span class="brand-sub">Drafting room for project charters</span>
+      </span>
+    </a>
+
+    <nav class="steps" aria-label="Progress">
+      <ol id="steps-ol">
+        <li class="step-chip" data-step="key">
+          <span class="step-num">01</span><span class="step-label">Key</span>
+        </li>
+        <li class="step-rule" aria-hidden="true"></li>
+        <li class="step-chip" data-step="idea">
+          <span class="step-num">02</span><span class="step-label">Describe</span>
+        </li>
+        <li class="step-rule" aria-hidden="true"></li>
+        <li class="step-chip" data-step="review">
+          <span class="step-num">03</span><span class="step-label">Charter</span>
+        </li>
+      </ol>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- STEP 1 · API KEY -->
+  <section class="step-view" id="view-key" hidden>
+    <div class="sheet sheet-narrow">
+      <div class="sheet-body">
+        <p class="eyebrow">Step 01 · Access</p>
+        <h1>Add your Gemini API&nbsp;key</h1>
+        <p class="lede">The key powers generation and never leaves this device — it is sent only to Google&rsquo;s API, over your own connection.</p>
+
+        <form id="form-key" novalidate>
+          <div class="field">
+            <label for="input-key">Gemini API key</label>
+            <div class="key-row">
+              <input type="password" id="input-key" name="apikey" autocomplete="off" spellcheck="false"
+                     placeholder="AIza…" aria-describedby="key-help" />
+              <button type="button" class="btn btn-secondary btn-icon" id="toggle-key" aria-label="Show or hide API key" title="Show / hide">
+                <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+            <p class="help" id="key-help">Free keys are issued at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">aistudio.google.com/apikey</a>.</p>
+          </div>
+
+          <label class="check-row">
+            <input type="checkbox" id="remember-key" checked />
+            <span>Remember the key in this browser</span>
+          </label>
+
+          <div class="actions">
+            <button type="submit" class="btn btn-primary" id="btn-key-continue">
+              Continue to the draft
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </button>
+          </div>
+        </form>
+      </div>
+      <div class="sheet-foot">Nothing is uploaded · No account · No tracking</div>
+    </div>
+  </section>
+
+  <!-- STEP 2 · IDEA + DETAILS -->
+  <section class="step-view" id="view-idea" hidden>
+    <div class="sheet sheet-wide">
+      <div class="sheet-body">
+        <p class="eyebrow">Step 02 · Brief</p>
+        <h1>Describe the project</h1>
+        <p class="lede">Plain text is perfect — what it is, what it does, who it serves. The richer the brief, the sharper the charter.</p>
+
+        <div class="field">
+          <div class="label-row">
+            <label for="input-idea">Project idea</label>
+            <button type="button" class="btn btn-ghost btn-small" id="btn-example">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/></svg>
+              Use sample brief
+            </button>
+          </div>
+          <textarea id="input-idea" rows="7" placeholder="e.g. A cross-platform mobile app that scans grocery receipts, tracks spending by category, and suggests cheaper alternatives for frequent purchases…"></textarea>
+          <div class="meta-row">
+            <span id="idea-count" class="char-count">0 characters</span>
+            <span class="hint kbd-hint"><kbd>Ctrl</kbd>+<kbd>Enter</kbd> to generate</span>
+          </div>
+        </div>
+
+        <details class="details-panel" id="details-panel">
+          <summary>
+            <span class="details-plus" aria-hidden="true"></span>
+            Optional particulars
+            <span class="summary-note">filled fields are used verbatim · blank ones are inferred</span>
+          </summary>
+          <div class="details-grid">
+            <div class="field">
+              <label for="d-org">Organization / team</label>
+              <input type="text" id="d-org" placeholder="e.g. Nova Labs" />
+            </div>
+            <div class="field">
+              <label for="d-name">Preferred project name</label>
+              <input type="text" id="d-name" placeholder="Leave blank to let the AI name it" />
+            </div>
+            <div class="field">
+              <label for="d-start">Planned start date</label>
+              <input type="date" id="d-start" />
+            </div>
+            <div class="field">
+              <label for="d-duration">Target duration (weeks)</label>
+              <input type="number" id="d-duration" min="1" max="260" placeholder="e.g. 12" />
+            </div>
+            <div class="field">
+              <label for="d-budget">Budget guidance</label>
+              <input type="text" id="d-budget" placeholder="e.g. $10,000, or “bootstrap, under $2k”" />
+            </div>
+            <div class="field">
+              <label for="d-team">Team size</label>
+              <input type="number" id="d-team" min="1" max="50" placeholder="e.g. 4" />
+            </div>
+            <div class="field">
+              <label for="d-sponsor-name">Sponsor / approver name</label>
+              <input type="text" id="d-sponsor-name" placeholder="Who signs off?" />
+            </div>
+            <div class="field">
+              <label for="d-sponsor-title">Sponsor title</label>
+              <input type="text" id="d-sponsor-title" placeholder="e.g. Course Director / Project Sponsor" />
+            </div>
+            <div class="field">
+              <label for="d-pm">Project manager</label>
+              <input type="text" id="d-pm" placeholder="e.g. Priya Sharma — Scrum Master" />
+            </div>
+            <div class="field field-span">
+              <label for="d-notes">Additional notes or constraints</label>
+              <input type="text" id="d-notes" placeholder="e.g. open-source only; demo due before the fair" />
+            </div>
+          </div>
+        </details>
+
+        <div class="actions actions-split">
+          <button type="button" class="btn btn-ghost" id="btn-back-key">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
+            Back
+          </button>
+          <button type="button" class="btn btn-primary" id="btn-generate" disabled>
+            Draft the charter
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="sheet-foot">One strong paragraph is enough — the model asks itself the questions a PM would.</div>
+    </div>
+  </section>
+
+  <!-- STEP 3 · REVIEW + DOWNLOAD -->
+  <section class="step-view step-review" id="view-review" hidden>
+    <div class="workspace">
+
+      <aside class="editor-rail">
+        <div class="rail-toolbar">
+          <div class="rail-toolbar-title">
+            <span class="eyebrow-inline">Step 03</span>
+            <strong>Review &amp; correct</strong>
+          </div>
+          <div class="rail-toolbar-actions">
+            <button type="button" class="btn btn-primary btn-small" id="btn-download">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+              Download .xlsx
+            </button>
+            <button type="button" class="btn btn-secondary btn-small" id="btn-regenerate" title="Generate a fresh draft from the same brief">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0114.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0020.5 15"/></svg>
+              Redraft
+            </button>
+            <button type="button" class="btn btn-ghost btn-small" id="btn-edit-inputs">Edit brief</button>
+            <button type="button" class="btn btn-ghost btn-small btn-quiet" id="btn-startover">Start over</button>
+          </div>
+        </div>
+
+        <div class="rail-scroll">
+          <p class="rail-note">Every change here is reflected in the sheet immediately — the workbook is built from exactly what you see.</p>
+          <div id="editor-pane"><!-- built by app.js --></div>
+        </div>
+      </aside>
+
+      <div class="preview-area">
+        <div class="preview-caption">
+          <span class="caption-dot" aria-hidden="true"></span>
+          Live document preview — updates as you type
+        </div>
+        <div class="preview-scroll" id="preview-scroll" tabindex="0" role="region" aria-label="Charter document preview"><!-- built by app.js --></div>
+      </div>
+
+    </div>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <p>Runs entirely in your browser · Your API key never leaves this device · Files open cleanly in Excel, Sheets &amp; LibreOffice</p>
+</footer>
+
+<!-- Generating overlay -->
+<div class="overlay" id="overlay" hidden role="status" aria-live="polite">
+  <div class="overlay-box">
+    <svg class="seal" viewBox="0 0 72 72" width="64" height="64" aria-hidden="true">
+      <circle cx="36" cy="36" r="33" fill="none" stroke="currentColor" stroke-width="2"/>
+      <circle cx="36" cy="36" r="25" fill="none" stroke="currentColor" stroke-width="1" opacity="0.55"/>
+      <g stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+        <line x1="36" y1="22" x2="36" y2="50"/>
+        <line x1="24.2" y1="29" x2="47.8" y2="43"/>
+        <line x1="24.2" y1="43" x2="47.8" y2="29"/>
+      </g>
+    </svg>
+    <p class="overlay-title">Forging your charter</p>
+    <p class="overlay-status" id="overlay-status">Analyzing your idea</p>
+  </div>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script src="vendor/exceljs.min.js"></script>
+<script>window.ExcelJS || document.write('<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"><\/script>');</script>
+<script src="js/gemini.js"></script>
+<script src="js/excel.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

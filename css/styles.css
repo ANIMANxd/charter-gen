@@ -710,8 +710,55 @@ td.doc-sub {
 td.doc-light { background: var(--doc-light); }
 td.doc-pale  { background: var(--doc-pale); }
 td.doc-right { text-align: right; }
+td.doc-crit  { background: #ffe9e9; }
+td.doc-bold  { font-weight: 700; }
 
 td.doc-approval { border: 1px solid #262626 !important; }
+
+/* charter ref card (schedule inputs) */
+.charter-ref { margin-bottom: 22px; }
+.charter-ref-inner {
+  background: #ffffff;
+  border: 1px solid var(--rule-strong);
+  border-left: 4px solid var(--accent);
+  border-radius: 8px;
+  padding: 14px 16px;
+  box-shadow: 2px 2px 0 rgba(28,36,64,0.06);
+}
+.cr-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+.cr-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+.cr-meta {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  margin-bottom: 3px;
+}
+
+/* select styling */
+select {
+  width: 100%;
+  background: #fdfcf9;
+  border: 1px solid var(--rule-strong);
+  border-radius: 6px;
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 14.5px;
+  padding: 10px 12px;
+}
+select:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus-ring); }
 
 /* ---------- overlay ---------- */
 

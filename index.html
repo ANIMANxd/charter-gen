@@ -42,6 +42,14 @@
         <li class="step-chip" data-step="review">
           <span class="step-num">03</span><span class="step-label">Charter</span>
         </li>
+        <li class="step-rule" aria-hidden="true"></li>
+        <li class="step-chip" data-step="schedule-inputs">
+          <span class="step-num">04</span><span class="step-label">Schedule</span>
+        </li>
+        <li class="step-rule" aria-hidden="true"></li>
+        <li class="step-chip" data-step="schedule-review">
+          <span class="step-num">05</span><span class="step-label">Plan</span>
+        </li>
       </ol>
     </nav>
   </div>
@@ -188,7 +196,7 @@
           <div class="rail-toolbar-actions">
             <button type="button" class="btn btn-primary btn-small" id="btn-download">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-              Download .xlsx
+              Charter .xlsx
             </button>
             <button type="button" class="btn btn-secondary btn-small" id="btn-regenerate" title="Generate a fresh draft from the same brief">
               <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0114.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0020.5 15"/></svg>
@@ -196,6 +204,13 @@
             </button>
             <button type="button" class="btn btn-ghost btn-small" id="btn-edit-inputs">Edit brief</button>
             <button type="button" class="btn btn-ghost btn-small btn-quiet" id="btn-startover">Start over</button>
+          </div>
+          <div class="rail-toolbar-actions" style="margin-top:10px">
+            <button type="button" class="btn btn-primary" id="btn-to-schedule" style="width:100%;justify-content:center">
+              Generate schedule from this charter
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+            </button>
+            <p class="help" style="margin:4px 0 0;font-size:12px;text-align:center;width:100%">Uses the same API key · Charter data is reused automatically</p>
           </div>
         </div>
 
@@ -213,6 +228,129 @@
         <div class="preview-scroll" id="preview-scroll" tabindex="0" role="region" aria-label="Charter document preview"><!-- built by app.js --></div>
       </div>
 
+    </div>
+  </section>
+
+  <!-- STEP 4 · SCHEDULE INPUTS -->
+  <section class="step-view" id="view-schedule-inputs" hidden>
+    <div class="sheet sheet-wide">
+      <div class="sheet-body">
+        <p class="eyebrow">Step 04 · Schedule</p>
+        <h1>Shape the schedule</h1>
+        <p class="lede">We reuse everything from your charter — name, milestones, deliverables, team and constraints. Add the scheduling particulars below; blanks are inferred intelligently.</p>
+
+        <div class="charter-ref" id="charter-ref">
+          <!-- filled by JS -->
+        </div>
+
+        <div class="details-grid" style="border:1px solid var(--rule-strong);border-radius:8px;padding:18px;background:var(--paper-warm);margin-bottom:24px">
+          <div class="field">
+            <label for="s-method">Methodology</label>
+            <select id="s-method">
+              <option value="">Auto (infer from charter)</option>
+              <option value="Waterfall">Waterfall — sequential, CPM</option>
+              <option value="Agile">Agile — sprints, story points</option>
+              <option value="Hybrid">Hybrid — milestones + sprints</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="s-workdays">Working days / week</label>
+            <select id="s-workdays">
+              <option value="">Default (5)</option>
+              <option value="5">5 — Mon to Fri</option>
+              <option value="6">6 — Mon to Sat</option>
+              <option value="7">7 — continuous</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="s-hours">Hours / day</label>
+            <input type="number" id="s-hours" min="4" max="12" placeholder="e.g. 8" />
+          </div>
+          <div class="field">
+            <label for="s-est">Estimation approach</label>
+            <select id="s-est">
+              <option value="">Mixed — best fit per activity</option>
+              <option value="PERT">PERT (O + 4ML + P)/6</option>
+              <option value="Analogous">Analogous</option>
+              <option value="Parametric">Parametric</option>
+              <option value="Bottom-Up">Bottom-Up</option>
+              <option value="Story Points">Story Points (Planning Poker)</option>
+              <option value="T-Shirt">T-Shirt Sizing</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="s-sprint">Sprint length (if Agile)</label>
+            <input type="text" id="s-sprint" placeholder="e.g. 2 weeks" />
+          </div>
+          <div class="field">
+            <label for="s-compress">Compression allowed</label>
+            <select id="s-compress">
+              <option value="">None — keep baseline</option>
+              <option value="Crashing allowed">Crashing allowed (+budget)</option>
+              <option value="Fast-tracking allowed">Fast-tracking allowed (+risk)</option>
+              <option value="Both allowed">Both — crash & fast-track</option>
+            </select>
+          </div>
+          <div class="field field-span">
+            <label for="s-resources">Resources / team (comma-separated)</label>
+            <input type="text" id="s-resources" placeholder="e.g. Frontend dev, QA engineer, Designer" />
+          </div>
+          <div class="field field-span">
+            <label for="s-constraints">Known constraints / dependencies</label>
+            <input type="text" id="s-constraints" placeholder="e.g. API must finish before testing; design + docs can start together" />
+          </div>
+          <div class="field field-span">
+            <label for="s-notes">Additional notes</label>
+            <input type="text" id="s-notes" placeholder="e.g. No work on public holidays; weekly client demos on Fridays" />
+          </div>
+        </div>
+
+        <div class="actions actions-split">
+          <button type="button" class="btn btn-ghost" id="btn-back-charter">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
+            Back to charter
+          </button>
+          <button type="button" class="btn btn-primary" id="btn-generate-schedule">
+            Forge the schedule
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="sheet-foot">All 6 processes will be covered: Plan · Define · Sequence · Estimate · Develop · Control — with PDM, PERT, CPM, float, leveling/smoothing, crashing/fast-tracking & Agile extras.</div>
+    </div>
+  </section>
+
+  <!-- STEP 5 · SCHEDULE REVIEW -->
+  <section class="step-view step-review" id="view-schedule-review" hidden>
+    <div class="workspace">
+      <aside class="editor-rail">
+        <div class="rail-toolbar">
+          <div class="rail-toolbar-title">
+            <span class="eyebrow-inline">Step 05</span>
+            <strong>Review schedule</strong>
+          </div>
+          <div class="rail-toolbar-actions">
+            <button type="button" class="btn btn-primary btn-small" id="btn-download-schedule">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+              Schedule .xlsx
+            </button>
+            <button type="button" class="btn btn-secondary btn-small" id="btn-regenerate-schedule">Redraft schedule</button>
+            <button type="button" class="btn btn-ghost btn-small" id="btn-edit-schedule-inputs">Edit inputs</button>
+            <button type="button" class="btn btn-ghost btn-small btn-quiet" id="btn-back-to-charter2">Back to charter</button>
+          </div>
+        </div>
+        <div class="rail-scroll">
+          <p class="rail-note">Edits here flow into the preview and the workbook instantly. Float &amp; critical path are recomputed locally from your durations &amp; dependencies.</p>
+          <div id="schedule-editor-pane"><!-- built by app.js --></div>
+        </div>
+      </aside>
+      <div class="preview-area">
+        <div class="preview-caption">
+          <span class="caption-dot" aria-hidden="true"></span>
+          Live schedule preview — 6 sheets in one workbook
+        </div>
+        <div class="preview-scroll" id="schedule-preview-scroll" tabindex="0" role="region" aria-label="Schedule preview"><!-- built by app.js --></div>
+      </div>
     </div>
   </section>
 
@@ -245,6 +383,8 @@
 <script>window.ExcelJS || document.write('<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"><\/script>');</script>
 <script src="js/gemini.js"></script>
 <script src="js/excel.js"></script>
+<script src="js/schedule.js"></script>
+<script src="js/schedule-excel.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

@@ -11,6 +11,7 @@
     charter: null,
     schedule: null,
     schedInputs: {},
+    planReport: null,
     generating: false,
     excelReady: typeof window.ExcelJS !== 'undefined'
   };
@@ -486,23 +487,83 @@
   }
 
   /* ========== SCHEDULE FLOW ========== */
+
+  // Parse free-form availability lines into { name, days } gates.
+  // Accepts: "X available from day 10", "X — from day 20 (after 4 weeks)",
+  // "X available after 3 weeks", "X is only available after the 3rd week",
+  // "available after 10 days", "from week 3", etc. Days = working days.
+  function parseAvailability(text, wd) {
+    wd = parseInt(wd, 10) || 5;
+    var gates = [];
+    String(text || '').split('\n').forEach(function (line) {
+      var t = line.trim();
+      if (!t) return;
+      var name = '', days = 0;
+      var m = t.match(/^(.*?)(?:\s*[-–—:]\s*|\s+)(?:available\s+)?from\s+(?:day\s*|week\s*)?(\d+)/i);
+      if (m) {
+        name = m[1];
+        days = parseInt(m[2], 10);
+        if (/week/i.test(t.slice(m.index || 0))) { /* handled below via unit match */ }
+        var unitM = t.match(/from\s+(day|week)\s*(\d+)/i);
+        if (unitM && /^week$/i.test(unitM[1])) days = parseInt(unitM[2], 10) * wd;
+      }
+      if (!days) {
+        // "... available after [the] 3rd week / 3 weeks / 10 days"
+        var m2 = t.match(/(?:is\s+)?(?:only\s+)?available\s+after\s+(?:the\s+)?(\d+)(?:st|nd|rd|th)?\s*(week|day)/i);
+        if (m2) {
+          days = parseInt(m2[1], 10) * (/week/i.test(m2[2]) ? wd : 1);
+          name = t.slice(0, m2.index).replace(/\s*(is|only|available)\s*$/i, '').replace(/[,;]$/, '').trim();
+        }
+      }
+      if (!days) {
+        // bare "... after the 3rd week" / "... after 10 days" anywhere in the line
+        var m3 = t.match(/after\s+(?:the\s+)?(\d+)(?:st|nd|rd|th)?\s*(week|day)/i);
+        if (m3) {
+          days = parseInt(m3[1], 10) * (/week/i.test(m3[2]) ? wd : 1);
+          name = t.slice(0, m3.index).replace(/\s*(is|only|available|of)\s*$/i, '').replace(/[,;]$/, '').trim();
+        }
+      }
+      if (name && isFinite(days) && days > 0) gates.push({ name: name, days: days });
+    });
+    return gates;
+  }
+
   function readSchedInputs() {
+    var weeks = parseInt($('#s-duration').value, 10);
+    var wd = parseInt($('#s-workdays').value, 10) || 5;
     return {
       methodology: $('#s-method').value.trim(),
-      workingDays: $('#s-workdays').value.trim(),
+      workingDays: $('#s-workdays').value.trim() || '5',
       hoursPerDay: $('#s-hours').value.trim(),
       estimationApproach: $('#s-est').value.trim(),
       sprintLength: $('#s-sprint').value.trim(),
       resources: $('#s-resources').value.trim(),
       constraints: $('#s-constraints').value.trim(),
       compressionPref: $('#s-compress').value.trim(),
-      notes: $('#s-notes').value.trim()
+      notes: $('#s-notes').value.trim(),
+      // hard constraints
+      startDate: $('#s-start').value,
+      durationWeeks: isFinite(weeks) && weeks > 0 ? weeks : '',
+      targetDays: isFinite(weeks) && weeks > 0 ? weeks * wd : 0,
+      resourceAvailability: parseAvailability($('#s-avail').value, wd),
+      resourceAvailabilityText: $('#s-avail').value.trim()   // raw text — always shown to the model
     };
   }
 
   function prepareScheduleInputsView() {
     var c = state.charter;
     var refEl = document.getElementById('charter-ref');
+
+    // Prefill hard constraints from the brief/charter once
+    var startInput = document.getElementById('s-start');
+    var durInput = document.getElementById('s-duration');
+    if (startInput && !startInput.value) {
+      startInput.value = (state.details && state.details.startDate) || todayIso();
+    }
+    if (durInput && !durInput.value && state.details && state.details.durationWeeks) {
+      durInput.value = state.details.durationWeeks;
+    }
+
     if (c && refEl) {
       var msTxt = (c.milestones||[]).map(function(m){ return m.name + (m.deadline?' ('+fmtDate(m.deadline)+')':''); }).join(' · ');
       var deliv = (c.keyDeliverables||[]).join(' · ');
@@ -533,6 +594,13 @@
     if (state.generating) return;
     if (!state.apiKey) { toast('Add your Gemini API key first.', 'error'); showView('key'); return; }
     if (!state.charter && !state.idea) { toast('Describe a project first.', 'error'); showView('idea'); return; }
+    var start = $('#s-start').value;
+    var weeks = parseInt($('#s-duration').value, 10);
+    if (!start) { toast('Pick a start date — the schedule is fitted to it.', 'error'); $('#s-start').focus(); return; }
+    if (!isFinite(weeks) || weeks < 1) {
+      toast('Enter the target duration in weeks — the schedule must fit exactly that length.', 'error');
+      $('#s-duration').focus(); return;
+    }
     state.schedInputs = readSchedInputs();
     state.generating = true;
     var btn = document.getElementById('btn-generate-schedule');
@@ -545,12 +613,27 @@
       details: state.details,
       schedInputs: state.schedInputs
     }).then(function (schedule) {
+      // Deterministic enforcement: the model's draft is fitted to the
+      // hard constraints (target duration, start date, resource gates)
+      // no matter what the model returned.
+      if (window.ScheduleLogic) {
+        state.planReport = window.ScheduleLogic.enforcePlan(schedule, state.schedInputs);
+      }
       state.schedule = schedule;
-      // compute CPM immediately to ensure dates consistent
       buildScheduleEditor();
       renderSchedulePreview();
       showView('schedule-review');
-      toast('Schedule forged with ' + window.GeminiService.PRIMARY_MODEL + ' — ' + schedule.activities.length + ' activities, ' + schedule.dependencies.length + ' links.', 'success');
+      var r = state.planReport;
+      if (r && r.targetDays) {
+        if (r.ok) {
+          toast('Schedule fits ' + r.targetDays + ' working days exactly' +
+            (r.gates.length ? ' · ' + r.gates.length + ' resource gate(s) enforced' : '') + '.', 'success');
+        } else {
+          toast('Resource availability forces ' + r.actualDays + ' working days (target ' + r.targetDays + ') — see the plan check note.', 'error');
+        }
+      } else {
+        toast('Schedule generated with ' + window.GeminiService.PRIMARY_MODEL + ' — ' + schedule.activities.length + ' activities.', 'success');
+      }
     }).catch(function (err) {
       toast((err && err.message) || 'Could not generate schedule.', 'error');
     }).finally(function () {
@@ -782,6 +865,17 @@
     function schedTd(cls, content, attrs){ return '<td class="'+cls+'"' + (attrs||'') + '>' + esc(content) + '</td>'; }
 
     var h='';
+    // Plan check banner — proof that hard constraints were enforced
+    var r = state.planReport || s.planCheck;
+    if (r && (r.targetDays || (r.gates && r.gates.length))) {
+      var okClass = r.ok ? 'doc-light' : 'doc-crit';
+      var checkLine = 'Plan check: ';
+      if (r.targetDays) checkLine += 'target ' + r.targetDays + ' working days → actual ' + r.actualDays + ' ' + (r.ok ? '✓ exact match' : '✗ gates force ' + r.actualDays + 'd');
+      if (r.gates && r.gates.length) checkLine += '  ·  Gates: ' + r.gates.join('  ·  ');
+      if (r.adjustments && r.adjustments.length) checkLine += '  ·  ' + r.adjustments.join(' ');
+      h += '<table class="charter" style="margin-bottom:18px"><tr><td class="doc-label" style="width:18%">Plan check</td>' +
+        '<td class="' + okClass + '" colspan="3">' + esc(checkLine) + '</td></tr></table>';
+    }
     // Mini charter-style header
     h += '<table class="charter" style="margin-bottom:18px"><colgroup><col class="c-label" /><col class="c-main" /><col class="c-second" /><col class="c-extra" /></colgroup>';
     h += '<tr><td class="doc-corner"></td><td class="doc-title" colspan="3">Project Schedule — ' + esc(s.projectName) + '</td></tr>';

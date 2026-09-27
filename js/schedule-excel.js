@@ -126,6 +126,13 @@
         ['Change Control', (schedule.controlPlan&&schedule.controlPlan.changeControlProcess)||''],
         ['Backlog Reprioritization', 'Backlog re-ordered each iteration / gate review as priorities shift.']
       ];
+      var pc = schedule.planCheck;
+      if (pc && (pc.targetDays || (pc.gates && pc.gates.length))) {
+        var line = pc.targetDays ? ('Target ' + pc.targetDays + ' working days → actual ' + pc.actualDays +
+          (pc.ok ? ' (exact match)' : ' (resource gates force this length)')) : ('Actual ' + pc.actualDays + ' working days');
+        if (pc.gates && pc.gates.length) line += '  ·  Gates: ' + pc.gates.join('  ·  ');
+        rows.unshift(['Plan Check', line]);
+      }
       r++;
       rows.forEach(function(row,i){
         var label=row[0], val=row[1];

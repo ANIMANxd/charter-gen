@@ -9,7 +9,7 @@
 
   var API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/';
   var PRIMARY_MODEL = 'gemini-3.5-flash-lite';
-  var FALLBACK_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+  var FALLBACK_MODELS = ['gemini-3.6-flash', 'gemini-3.7-flash'];
   var REQUEST_TIMEOUT_MS = 90000;
 
   /* ---------- structured output schema ---------- */
@@ -154,17 +154,20 @@
     return fetch(url, options).finally(function () { clearTimeout(timer); });
   }
 
-  function callModel(model, apiKey, prompt, schema) {
+  function callModel(model, apiKey, prompt, schema, system, temperature) {
     var url = API_BASE + encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(apiKey);
     var payload = {
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
-        temperature: 0.75,
+        temperature: temperature !== undefined ? temperature : 0.75,
         maxOutputTokens: 8192,
         responseMimeType: 'application/json',
         responseSchema: schema || SCHEMA
       }
     };
+    if (system) {
+      payload.systemInstruction = { parts: [{ text: system }] };
+    }
     return fetchWithTimeout(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -339,6 +342,7 @@
             pessimistic: { type: 'NUMBER' },
             expectedDuration: { type: 'NUMBER' },
             durationDays: { type: 'NUMBER' },
+            earliestStartDay: { type: 'NUMBER', description: 'Earliest allowed start offset in working days from project start (resource availability gate); 0 if none' },
             storyPoints: { type: 'NUMBER' },
             tShirtSize: { type: 'STRING' },
             resources: { type: 'ARRAY', items: { type: 'STRING' } },
@@ -412,64 +416,96 @@
     required: ['projectName', 'methodology', 'plannedStart', 'plannedEnd', 'planScheduleManagement', 'activities', 'dependencies', 'criticalPath', 'projectDurationDays', 'resourcePlan', 'compression', 'controlPlan']
   };
 
+  /* ---------- schedule system prompt (the hard contract) ---------- */
+
+  var SCHEDULE_SYSTEM = [
+    'You are a senior PMP-certified project scheduler. You produce ONE JSON object that conforms exactly to the provided schema. You never output prose, markdown or comments.',
+    '',
+    'NON-NEGOTIABLE CONSTRAINTS (an output violating any of these is invalid):',
+    '1. DURATION IS A HARD REQUIREMENT. The request states TARGET WORKING DAYS. The critical path of your schedule (longest chain of dependent activities) must total exactly that many working days. Never plan a shorter or longer project. You decide how to distribute those days across activities — keep the proportions realistic for the work described.',
+    '2. START DATE IS FIXED. plannedStart must be exactly the START DATE given in the request, in YYYY-MM-DD. plannedEnd is the calendar date on which the critical path finishes when counting only the given working days per week (skip non-working days).',
+    '3. RESOURCE AVAILABILITY IS A HARD REQUIREMENT. If a resource is unavailable until day N, no activity assigned to that resource may start before day N. Encode this with dependencies/lag so the schedule respects it, and repeat it in that activity\'s constraint field.',
+    '4. CHARTER FIDELITY. The charter in the request is the single source of truth. Every key deliverable and milestone from the charter must appear in your activities or milestone activities. Use charter team roles as activity resources. Use charter milestone intent when placing milestone activities. Do not invent scope that is absent from the charter, and do not drop charter scope.',
+    '5. STRUCTURE. 8-16 activities; every activity except the first must have at least one predecessor; the dependency network must be acyclic and connected. Milestone activities have durationDays = 0 and isMilestone = true; there are 2-4 of them. Use all four relationship types (FS, SS, FF, SF) where they genuinely fit, plus a few realistic leads/lags.',
+    '6. ESTIMATES. optimistic <= mostLikely <= pessimistic (all in working days, 0.5 steps allowed), and expectedDuration = (optimistic + 4*mostLikely + pessimistic) / 6 rounded to 1 decimal. durationDays equals expectedDuration for non-milestones. For Agile activities also give storyPoints (1-13) and tShirtSize (XS/S/M/L).',
+    '7. HONESTY. Never use TBD, N/A, placeholder or filler text. Every string must be concrete and specific to this project. If a requested field does not apply, give it an empty string or empty array — never a fake value.',
+    '',
+    'NOTE ON ROUNDING: your per-activity durations are relative effort estimates; the system rescales them proportionally so the critical path lands exactly on TARGET WORKING DAYS. Preserve meaningful proportions and re-check your expectedDuration fields against your durations before answering.'
+  ].join('\n');
+
   function buildSchedulePrompt(charter, idea, details, schedInputs) {
     var s = schedInputs || {};
-    var lines = [];
-    function add(label, value) {
-      if (value !== undefined && value !== null && String(value).trim() !== '') lines.push('- ' + label + ': ' + String(value).trim());
-    }
-    add('Methodology preference', s.methodology);
-    add('Working days per week', s.workingDays);
-    add('Hours per day', s.hoursPerDay);
-    add('Estimation approach', s.estimationApproach);
-    add('Known constraints', s.constraints);
-    add('Available resources / team', s.resources);
-    add('Sprint length (if Agile)', s.sprintLength);
-    add('Risk appetite / compression allowed', s.compressionPref);
-    add('Additional schedule notes', s.notes);
+    var d = details || {};
 
-    var charterSummary = '';
-    try {
-      charterSummary = JSON.stringify({
-        projectName: charter && charter.projectName,
-        objective: charter && charter.objective,
-        successCriteria: charter && charter.successCriteria,
-        keyDeliverables: charter && charter.keyDeliverables,
-        milestones: charter && charter.milestones,
-        highLevelRequirements: charter && charter.highLevelRequirements,
-        budget: charter && charter.budget,
-        teamMembers: charter && charter.teamMembers,
-        risks: charter && charter.risks,
-        stakeholders: charter && charter.stakeholders
-      }, null, 2);
-    } catch (e) { charterSummary = '(unavailable)'; }
+    function add(lines, label, value) {
+      if (value !== undefined && value !== null && String(value).trim() !== '') {
+        lines.push(label + ': ' + String(value).trim());
+      }
+    }
+
+    var constraints = [];
+    add(constraints, 'TARGET WORKING DAYS (critical path must equal this)', s.targetDays);
+    add(constraints, 'START DATE (plannedStart, YYYY-MM-DD)', s.startDate);
+    add(constraints, 'WORKING DAYS PER WEEK', s.workingDays);
+    add(constraints, 'HOURS PER DAY', s.hoursPerDay);
+    add(constraints, 'METHODOLOGY', s.methodology);
+    add(constraints, 'ESTIMATION APPROACH', s.estimationApproach);
+    add(constraints, 'SPRINT LENGTH', s.sprintLength);
+    add(constraints, 'COMPRESSION ALLOWED', s.compressionPref);
+    if (Array.isArray(s.resourceAvailability) && s.resourceAvailability.length) {
+      constraints.push('RESOURCE AVAILABILITY (hard gates, working days from start): ' +
+        s.resourceAvailability.map(function (g) { return g.name + ' from day ' + g.days; }).join(' | '));
+    }
+    if (s.resourceAvailabilityText) {
+      constraints.push('RESOURCE AVAILABILITY (user\'s own words — obey exactly): "' + s.resourceAvailabilityText + '"');
+    }
+    add(constraints, 'TEAM / RESOURCES', s.resources);
+    add(constraints, 'OTHER CONSTRAINTS', s.constraints);
+    add(constraints, 'ADDITIONAL NOTES', s.notes);
+
+    var brief = [];
+    add(brief, 'Organization', d.org);
+    add(brief, 'Planned start date', d.startDate);
+    add(brief, 'Target duration (weeks)', d.durationWeeks);
+    add(brief, 'Budget', d.budget);
+    add(brief, 'Team size', d.teamSize);
+    add(brief, 'Project manager', d.projectManager);
+    add(brief, 'Notes / constraints', d.notes);
+
+    var charterSummary = '(no charter — infer everything from the brief)';
+    if (charter) {
+      try {
+        charterSummary = JSON.stringify({
+          projectName: charter.projectName,
+          objective: charter.objective,
+          successCriteria: charter.successCriteria,
+          keyDeliverables: charter.keyDeliverables,
+          milestones: charter.milestones,
+          highLevelRequirements: charter.highLevelRequirements,
+          budget: charter.budget,
+          teamMembers: charter.teamMembers,
+          risks: charter.risks,
+          projectManagers: charter.projectManagers,
+          stakeholders: charter.stakeholders
+        }, null, 2);
+      } catch (e) { charterSummary = '(unavailable)'; }
+    }
 
     return [
-      'You are a senior PMP-certified scheduling specialist and PMO lead. Build a complete, professional PROJECT SCHEDULE covering all 6 Schedule Management processes.',
-      '',
-      '=== CHARTER CONTEXT (use verbatim where relevant) ===',
+      '=== A. APPROVED CHARTER (authoritative) ===',
       charterSummary,
       '',
-      '=== ORIGINAL PROJECT IDEA ===',
+      '=== B. ORIGINAL BRIEF ===',
       (idea || '').trim() || '(none)',
+      brief.length ? '\nBrief details:\n' + brief.join('\n') : '',
       '',
-      '=== SCHEDULE-SPECIFIC INPUTS (supplied by user; use verbatim) ===',
-      lines.length ? lines.join('\n') : '- (none supplied - infer sensible defaults)',
+      '=== C. SCHEDULING CONSTRAINTS (hard requirements from the user) ===',
+      constraints.length ? constraints.join('\n') : '- (none supplied — propose sensible values and state them in the JSON)',
       '',
-      '=== RULES — COVER EVERY CONCEPT ===',
-      '1. methodology: infer Waterfall / Agile / Hybrid from idea; respect user preference if given.',
-      '2. plannedStart / plannedEnd: derive from charter milestones or today; plannedEnd must be after plannedStart; duration should match sum of critical path.',
-      '3. planScheduleManagement: 1 policy sentence, 2-3 tools (e.g., MS Project, Jira, Primavera), and 1 roles sentence.',
-      '4. activities: 8 to 14 activities covering the deliverables. Each needs id like A01, wbsId like 1.1, name, 1-sentence description, isMilestone boolean (exactly 2-3 milestones have 0 duration and isMilestone true), estimationMethod (one of: Analogous, Parametric, PERT, Bottom-Up, Story Points, T-Shirt), optimistic/mostLikely/pessimistic/expectedDuration numbers (expectedDuration = (O+4ML+P)/6 rounded to 1 decimal; use plausible days 1-15; for Agile use storyPoints 1-13 and tShirtSize XS/S/M/L), durationDays equals expectedDuration (or 0 for milestones), resources array (1-2 roles), constraint string or empty.',
-      '5. dependencies: 8 to 16 logical links forming a connected PDM network. Use all 4 types at least once across the set if methodology allows: FS, SS, FF, SF. Include lagDays (0-3) and leadDays (0-2) on 2-3 links to show lead/lag.',
-      '6. criticalPath: array of activity ids forming the longest FS path through the network; must be consistent with dependencies and durations. projectDurationDays is sum of critical path durations.',
-      '7. resourcePlan: levelingNotes (1 sentence, mentions shifting dates and that critical path may change) and smoothingNotes (1 sentence, mentions using float, critical path NOT changed).',
-      '8. compression: crashOptions (1-2 sentences, mentions least incremental cost) and fastTrackOptions (1-2 sentences, mentions overlapping/parallel, increased risk, no direct cost).',
-      '9. controlPlan: baselineDate (same as plannedStart), varianceThreshold (e.g., +/-10%), velocityTarget if Agile else empty, retrospectiveCadence (e.g., bi-weekly), changeControlProcess (1 sentence).',
-      '10. agileRelease: include only if methodology is Agile or Hybrid: 3-4 sprints with sprint label, goal, activityIds subset, velocityPoints total.',
-      '11. Be domain-specific, professional, keep every string under 220 characters. No numbering prefixes inside strings. No TBD/N/A placeholders.',
+      '=== D. YOUR TASK ===',
+      'Produce the complete project schedule as JSON: planScheduleManagement, activities (with WBS, PERT/Agile estimates, resources, constraints), dependencies (PDM), resourcePlan, compression options, controlPlan, and — for Agile/Hybrid — agileRelease. Follow the system constraints exactly, especially the TARGET WORKING DAYS and RESOURCE AVAILABILITY requirements.',
       '',
-      'Return ONLY the JSON object conforming to the provided schema.'
+      'Return ONLY the JSON object.'
     ].join('\n');
   }
 
@@ -542,6 +578,7 @@
           pessimistic: p,
           expectedDuration: exp,
           durationDays: dur,
+          earliestStart: typeof a.earliestStartDay === 'number' && a.earliestStartDay > 0 ? a.earliestStartDay : (a.isMilestone ? 0 : undefined),
           storyPoints: typeof a.storyPoints === 'number' ? a.storyPoints : undefined,
           tShirtSize: s(a.tShirtSize) || undefined,
           resources: Array.isArray(a.resources) ? a.resources.map(clean).filter(Boolean).slice(0,3) : [],
@@ -592,7 +629,8 @@
     var lastError = null;
     function attempt(i) {
       if (i >= models.length) throw lastError || CharterError('model','None of the available Gemini models could be reached.');
-      return callModel(models[i], opts.apiKey, prompt, SCHEDULE_SCHEMA).catch(function(err){
+      // Low temperature: schedule data must be deterministic and constraint-faithful.
+      return callModel(models[i], opts.apiKey, prompt, SCHEDULE_SCHEMA, SCHEDULE_SYSTEM, 0.2).catch(function(err){
         if (err && err.kind==='model'){ lastError=err; return attempt(i+1); }
         throw err;
       });

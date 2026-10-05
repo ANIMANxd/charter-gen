@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cost Management — EVM · Charter Forge</title>
+<meta name="description" content="Earned Value Management: variances, performance indexes, forecasting, AI-enhanced prediction and anomaly detection." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="css/styles.css" />
+<link rel="stylesheet" href="css/cost.css" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%231C2440'/%3E%3Cpath d='M9 8h10l4 4v12H9z' fill='%23F6F2EA'/%3E%3Cpath d='M19 8l4 4h-4z' fill='%232F5597'/%3E%3Crect x='12' y='15' width='8' height='2' rx='1' fill='%232F5597'/%3E%3Crect x='12' y='19' width='6' height='2' rx='1' fill='%232F5597'/%3E%3C/svg%3E" />
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <a class="brand" href="index.html" aria-label="Charter Forge home">
+      <svg class="brand-mark" viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
+        <rect width="32" height="32" rx="4" fill="#1C2440"/>
+        <path d="M9 8h10l4 4v12H9z" fill="#F6F2EA"/>
+        <path d="M19 8l4 4h-4z" fill="#2F5597"/>
+        <rect x="12" y="15" width="8" height="2" rx="1" fill="#2F5597"/>
+        <rect x="12" y="19" width="6" height="2" rx="1" fill="#2F5597"/>
+      </svg>
+      <span class="brand-text">
+        <span class="brand-name">Charter Forge</span>
+        <span class="brand-sub">Cost Management · EVM</span>
+      </span>
+    </a>
+    <nav class="topnav" aria-label="Primary">
+      <a class="nav-link" href="index.html">Charter &amp; Schedule</a>
+      <a class="nav-link is-active" href="cost.html">Cost Management</a>
+    </nav>
+  </div>
+</header>
+
+<main class="cost-page">
+
+  <section class="cost-hero">
+    <p class="eyebrow">Cost Management · Earned Value Management</p>
+    <h1>EVM Cost &amp; Schedule Control</h1>
+    <p class="lede">Enter <strong>PV · EV · AC</strong> per sprint (cumulative to-date, the standard EVM convention). Everything else — variances, indexes, forecasts, AI predictions and risk flags — is computed live, charted, and exportable to Excel.</p>
+    <div class="assign-grid">
+      <div class="assign-card" data-track="all"><span class="badge">All · §1</span><strong>Variance Calculation</strong>CV = EV − AC · SV = EV − PV. Under/over budget, ahead/behind.</div>
+      <div class="assign-card" data-track="all"><span class="badge">All · §2</span><strong>Performance Indexes</strong>CPI = EV/AC · SPI = EV/PV. Trend dashboard across sprints.</div>
+      <div class="assign-card" data-track="all"><span class="badge">All · §3</span><strong>Forecasting</strong>EAC / ETC / VAC / TCPI. Expected final cost report.</div>
+      <div class="assign-card" data-track="odd"><span class="badge odd">Odd ID · §4</span><strong>AI Forecasting</strong>Regression on CPI/SPI history predicts the next sprints; compared vs classical EAC.</div>
+      <div class="assign-card" data-track="even"><span class="badge even">Even ID · §5</span><strong>Anomaly Detection</strong>Isolation-style scoring flags unusual cost/schedule variances.</div>
+    </div>
+    <p class="help" id="track-note" style="margin-top:12px"></p>
+  </section>
+
+  <section class="cost-controls">
+    <div class="grid">
+      <div class="field"><label for="f-project">Project</label><input type="text" id="f-project" placeholder="e.g. CampusCart" /></div>
+      <div class="field"><label for="f-bac">Budget at Completion (BAC)</label><input type="number" id="f-bac" min="1" step="any" /></div>
+      <div class="field"><label for="f-method">EAC method</label>
+        <select id="f-method">
+          <option value="typical">Typical — BAC / CPI</option>
+          <option value="atypical">Atypical — AC + (BAC − EV)</option>
+          <option value="composite">Composite — AC + (BAC − EV)/(CPI·SPI)</option>
+        </select>
+      </div>
+      <div class="field"><label for="f-digit">Student ID — last digit</label><input type="text" id="f-digit" inputmode="numeric" maxlength="1" placeholder="e.g. 7" /></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary btn-small" id="btn-add" type="button">+ Add sprint</button>
+      <button class="btn btn-secondary btn-small" id="btn-del-last" type="button">− Remove last sprint</button>
+      <button class="btn btn-secondary btn-small" id="btn-example" type="button">Load PDF example</button>
+      <button class="btn btn-secondary btn-small" id="btn-excel" type="button">Download .xlsx report</button>
+      <button class="btn btn-secondary btn-small" id="btn-print" type="button">Print report</button>
+      <button class="btn btn-ghost btn-small no-print" id="btn-reset" type="button">Reset to Sprint 1</button>
+    </div>
+    <p class="help" style="margin-bottom:0">Values are in your own currency units (PDF example uses $m: Sprint 1 → PV 100, EV 80, AC 90 ⇒ CV −10 over budget, SV −20 behind, CPI 0.89, SPI 0.8). Sprint rows are cumulative snapshots — each sprint holds the to-date totals. Tip: each row also has its own × remove button.</p>
+  </section>
+
+  <section class="cost-controls" id="sec-generate">
+    <p class="eyebrow">Generate from brief · Gemini does the data entry</p>
+    <h2 style="margin-top:0">Describe the project — get sprint EVM data</h2>
+    <p class="lede" style="margin-bottom:16px">Like the Charter and Schedule flows: describe the project, pick a shape, and Gemini drafts the PV / EV / AC sprint history. You stay in control — every value lands in the editable table above.</p>
+    <div class="field"><label for="g-brief">Project brief</label>
+      <textarea id="g-brief" rows="3" placeholder="e.g. A 6-sprint student project building a campus food-ordering app with 4 developers; testing ran late and the API integration overran…"></textarea>
+    </div>
+    <div class="grid" style="grid-template-columns:repeat(3,minmax(0,1fr));display:grid;gap:14px">
+      <div class="field"><label for="g-count">Sprints to generate</label><input type="number" id="g-count" min="3" max="12" value="6" /></div>
+      <div class="field"><label for="g-bac">BAC for this dataset</label><input type="number" id="g-bac" min="1" step="any" /></div>
+      <div class="field"><label for="g-scenario">Project shape</label>
+        <select id="g-scenario">
+          <option value="mixed">Realistic mixed — ups and downs</option>
+          <option value="healthy">Steady healthy — mostly CPI/SPI ≥ 1</option>
+          <option value="struggling">Struggling — overrun, worsening</option>
+          <option value="recovery">Recovery — bad start, finishes strong</option>
+        </select>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary btn-small" id="g-gen" type="button">Generate sprints with Gemini</button>
+    </div>
+    <p class="help" id="g-status" style="margin-bottom:0">Uses the same saved Gemini key. Generated rows replace the current table.</p>
+  </section>
+    <p class="help" style="margin-bottom:0">Values are in your own currency units (PDF example uses $m: Sprint 1 → PV 100, EV 80, AC 90 ⇒ CV −10 over budget, SV −20 behind, CPI 0.89, SPI 0.8). Sprint rows are cumulative snapshots — each sprint holds the to-date totals.</p>
+  </section>
+
+  <div class="health-banner" id="health-banner" role="status"></div>
+
+  <div class="kpi-grid">
+    <div class="kpi" id="kpi-cv"><div class="k-label">Cost Variance (EV−AC)</div><div class="k-val">—</div><div class="k-sub"></div></div>
+    <div class="kpi" id="kpi-sv"><div class="k-label">Schedule Variance (EV−PV)</div><div class="k-val">—</div><div class="k-sub"></div></div>
+    <div class="kpi" id="kpi-cpi"><div class="k-label">CPI (EV/AC)</div><div class="k-val">—</div><div class="k-sub"></div></div>
+    <div class="kpi" id="kpi-spi"><div class="k-label">SPI (EV/PV)</div><div class="k-val">—</div><div class="k-sub"></div></div>
+    <div class="kpi" id="kpi-eac"><div class="k-label">EAC — forecast at completion</div><div class="k-val">—</div><div class="k-sub"></div></div>
+    <div class="kpi" id="kpi-etc"><div class="k-label">ETC — estimate to complete</div><div class="k-val">—</div><div class="k-sub"></div></div>
+    <div class="kpi" id="kpi-vac"><div class="k-label">VAC — variance at completion</div><div class="k-val">—</div><div class="k-sub"></div></div>
+    <div class="kpi" id="kpi-tcpi"><div class="k-label">TCPI — to hit BAC</div><div class="k-val">—</div><div class="k-sub"></div></div>
+  </div>
+
+  <section class="panel" id="sec-table">
+    <div class="panel-head"><p class="eyebrow">§1 + §2 · Variances &amp; indexes</p><h2>Sprint EVM table</h2>
+    <p>Type directly into PV / EV / AC — CV, SV, CPI, SPI, EAC, ETC and status update instantly. Red rows are anomaly-flagged (§5).</p></div>
+    <div class="panel-body">
+      <table class="evm" aria-label="EVM sprint table">
+        <thead><tr><th class="l">Sprint</th><th>PV</th><th>EV</th><th>AC</th><th>CV</th><th>SV</th><th>CPI</th><th>SPI</th><th>Budget?</th><th>Schedule?</th><th>EAC</th><th>ETC</th><th>Risk</th><th></th></tr></thead>
+        <tbody id="evm-tbody"></tbody>
+        <tfoot id="evm-tfoot"></tfoot>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><p class="eyebrow">§2 · Trends</p><h2>CPI / SPI dashboard</h2><p>Solid lines are observed sprints; dashed lines are the AI regression projection. The 1.0 line is breakeven.</p></div>
+    <div class="panel-body">
+      <div class="charts-grid">
+        <div class="chart-card"><h3>CPI &amp; SPI trend (+ AI projection)</h3><canvas id="chart-trend"></canvas><div class="legend"><span><i style="background:#2e6b4f"></i>CPI</span><span><i style="background:#2f5597"></i>SPI</span><span>dashed = AI forecast</span></div></div>
+        <div class="chart-card"><h3>PV vs EV vs AC per sprint</h3><canvas id="chart-bars"></canvas><div class="legend"><span><i style="background:#7c85a0"></i>PV planned</span><span><i style="background:#2f5597"></i>EV earned</span><span><i style="background:#b3402e"></i>AC spent</span></div></div>
+        <div class="chart-card"><h3>CV (green) &amp; SV (blue) — red = adverse</h3><canvas id="chart-var"></canvas></div>
+        <div class="chart-card"><h3>EAC methods vs BAC vs AI</h3><canvas id="chart-eac"></canvas><div class="legend"><span>Typ = BAC/CPI · Atyp = AC+(BAC−EV) · Comp = composite</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><p class="eyebrow">§3 · Forecasting</p><h2>Estimate at / to Completion</h2></div>
+    <div class="panel-body" id="forecast-body"></div>
+  </section>
+
+  <section class="panel" id="sec-ai">
+    <div class="panel-head"><p class="eyebrow">§4 · Odd Student ID</p><h2>AI-enhanced forecasting</h2><p>Least-squares regression learns each index trend and projects forward — the in-browser stand-in for Random Forest / LSTM on the same PV·EV·AC features.</p></div>
+    <div class="panel-body" id="ai-body"></div>
+  </section>
+
+  <section class="panel" id="sec-anomaly">
+    <div class="panel-head"><p class="eyebrow">§5 · Even Student ID</p><h2>Anomaly detection — flagged risks</h2><p>Isolation-style scoring (z-scores over CV%, SV%, CPI, SPI) — the in-browser stand-in for Isolation Forest.</p></div>
+    <div class="panel-body" id="anomaly-body"></div>
+  </section>
+
+  <section class="panel" id="sec-gemini">
+    <div class="panel-head"><p class="eyebrow">AI-driven practice · Gemini</p><h2>AI insight report on your live data</h2>
+    <p>Traditional EVM above meets modern AI practice here: Gemini reads your current sprint snapshot and writes a predictive outlook, risk flags, and control actions. Uses the <strong>same Gemini key</strong> as Charter Forge (shared browser storage — nothing else sees it).</p></div>
+    <div class="panel-body">
+      <div class="key-row" style="display:flex;gap:8px;flex-wrap:wrap">
+        <input type="password" id="ai-key" autocomplete="off" spellcheck="false" placeholder="AIza… (same key as Charter Forge)" style="flex:1;min-width:220px" />
+        <button class="btn btn-secondary btn-small" id="ai-save-key" type="button">Save key</button>
+        <button class="btn btn-primary btn-small" id="ai-gen" type="button">Generate AI insights</button>
+      </div>
+      <p class="help" id="ai-key-status" style="margin:8px 0 0"></p>
+      <div class="ai-out" id="ai-out" style="margin-top:14px"><p class="help">No AI report yet — your offline regression (§4) and anomaly flags (§5) above are always available without a key.</p></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><p class="eyebrow">Reference</p><h2>Formulas, worked example &amp; learning outcomes</h2></div>
+    <div class="panel-body">
+      <table class="formula-table">
+        <tr><th>Metric</th><th>Formula</th><th>Reading</th></tr>
+        <tr><td>Cost Variance</td><td><code>CV = EV − AC</code></td><td>&gt; 0 under budget · &lt; 0 over budget</td></tr>
+        <tr><td>Schedule Variance</td><td><code>SV = EV − PV</code></td><td>&gt; 0 ahead · &lt; 0 behind schedule</td></tr>
+        <tr><td>CPI / SPI</td><td><code>CPI = EV/AC · SPI = EV/PV</code></td><td>&gt; 1 good · &lt; 1 poor · = 1 on plan</td></tr>
+        <tr><td>EAC</td><td><code>BAC/CPI · AC+(BAC−EV) · AC+(BAC−EV)/(CPI·SPI)</code></td><td>Expected total cost under each assumption</td></tr>
+        <tr><td>ETC / VAC / TCPI</td><td><code>ETC=EAC−AC · VAC=BAC−EAC · TCPI=(BAC−EV)/(BAC−AC)</code></td><td>Left to spend · overrun · efficiency needed</td></tr>
+      </table>
+      <div class="note-box"><strong>PDF worked example:</strong> PV = 100, EV = 80, AC = 90 → CV = −10 (over budget) · SV = −20 (behind) · CPI = 0.89 (inefficient) · SPI = 0.8 (delayed). Sprint 1 above reproduces it exactly — press “Load PDF example” any time to restore it.<br />
+      <strong>Learning outcomes:</strong> variances reveal project health (§1) · indexes measure efficiency and schedule adherence (§2) · EAC/ETC practise predictive cost management (§3) · regression shows how AI improves accuracy in dynamic projects (§4) · anomaly flags show how AI catches risk before it escalates (§5).</div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="foot"><p>Runs entirely in your browser · EVM math + AI approximations run locally · Excel export via vendored ExcelJS</p></footer>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script src="vendor/exceljs.min.js"></script>
+<script>window.ExcelJS || document.write('<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"><\/script>');</script>
+<script src="js/cost-excel.js"></script>
+<script src="js/cost-ai.js"></script>
+<script src="js/cost.js"></script>
+</body>
+</html>

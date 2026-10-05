@@ -45,13 +45,31 @@ Then open the printed URL. Get a free Gemini API key at <https://aistudio.google
 - **Model:** `gemini-3.5-flash` by default, with automatic fallback to `gemini-2.5-flash` → `gemini-2.0-flash` if a model isn't available on your key. Structured JSON output (`responseSchema`) keeps responses predictable.
 - **Privacy:** your API key and project text never touch any server other than Google's Generative Language API.
 
+## Cost Management (EVM)
+
+`cost.html` implements the EVM coursework as an interactive page (no API key needed):
+
+- **§1 Variances (All):** editable PV/EV/AC sprint table → live CV = EV−AC, SV = EV−PV with under/over budget and ahead/behind verdicts.
+- **§2 Indexes (All):** CPI = EV/AC, SPI = EV/PV with a 4-chart dashboard (trend + AI projection, PV/EV/AC bars, CV/SV diverging bars, EAC comparison).
+- **§3 Forecasting (All):** EAC (typical / atypical / composite), ETC, VAC, TCPI forecast report.
+- **§4 AI forecasting (odd ID):** least-squares regression over CPI/SPI history projects the next 3 sprints and is compared against classical EAC (in-browser stand-in for Random Forest/LSTM).
+- **§5 Anomaly detection (even ID):** isolation-style z-score over CV%, SV%, CPI, SPI drift flags HIGH RISK / WATCH sprints (in-browser stand-in for Isolation Forest).
+- Entering the last digit of a Student ID highlights the student's AI track; Sprint 1 ships with the PDF worked example (PV 100, EV 80, AC 90); the page exports a 5-sheet `.xlsx` report and persists to localStorage. Verify with `node test-cost.cjs`.
+- **AI-driven practice (Gemini, same key):** the closing panel sends the live EVM snapshot to Gemini — reusing the exact same `cf_gemini_key` browser entry as the charter app — for a predictive outlook, risk flags, and control actions. No extra setup if a key is already saved; offline regression/anomaly tables remain the no-key baseline.
+- **Generate from brief:** describe the project (3–12 sprints, BAC, shape: mixed/healthy/struggling/recovery) and Gemini drafts the PV/EV/AC history straight into the editable table — same pattern as the Charter/Schedule flows.
+
 ## Project layout
 
 ```
-index.html          app shell (3-step wizard)
+index.html          app shell (charter + schedule wizard)
+cost.html           Cost Management page (EVM: variances, indexes, forecast, AI)
 css/styles.css      dark workbench theme + document preview styles
+css/cost.css        cost page panels, tables, charts, KPIs
 js/gemini.js        Gemini REST client, prompt, schema, error handling
 js/excel.js         workbook builder (UMD — also runs under Node for testing)
 js/app.js           wizard state, editor, live preview, xlsx download
+js/cost.js          EVM engine + dashboard (variances, CPI/SPI, EAC/ETC, regression AI, anomaly flags)
+js/cost-excel.js    5-sheet EVM report workbook builder
+test-cost.cjs       node verification for the EVM math + workbook export
 vendor/             vendored ExcelJS
 ```
